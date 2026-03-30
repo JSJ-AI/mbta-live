@@ -309,13 +309,15 @@ function updVeh(veh){
     seen.add(v.id);
     if(vmarkers[v.id]){
       vmarkers[v.id].setLngLat([a.longitude,a.latitude]);
-      vmarkers[v.id].getElement().style.transform='rotate('+(a.bearing||0)+'deg)';
+      // Update rotation via MapLibre marker API (respects map orientation)
+      if(typeof vmarkers[v.id].setRotation==='function') vmarkers[v.id].setRotation(a.bearing||0);
       return;
     }
+    // Arrow SVG: teardrop/chevron pointing up, rotated by bearing via MapLibre (not CSS)
     const el=document.createElement('div');
-    el.style.cssText='width:16px;height:16px;border-radius:50%;background:'+m.c+';border:2px solid white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:white;box-shadow:0 1px 4px rgba(0,0,0,.5);transition:transform .3s;transform:rotate('+(a.bearing||0)+'deg);';
-    el.style.display=vehOn?'flex':'none';
-    const mk=new maplibregl.Marker({element:el}).setLngLat([a.longitude,a.latitude]).addTo(map);
+    el.style.cssText='cursor:pointer;display:'+(vehOn?'block':'none')+';filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));';
+    el.innerHTML='<svg width="18" height="22" viewBox="0 0 18 22" xmlns="http://www.w3.org/2000/svg"><polygon points="9,0 18,18 9,13 0,18" fill="'+m.c+'" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+    const mk=new maplibregl.Marker({element:el, rotation:(a.bearing||0), rotationAlignment:'map', pitchAlignment:'map'}).setLngLat([a.longitude,a.latitude]).addTo(map);
     el.addEventListener('click',()=>{
       const status=(a.current_status||'').replace(/_/g,' ');
       const spd=a.speed?Math.round(a.speed*2.237)+'mph':'n/a';
