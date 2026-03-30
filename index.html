@@ -75,6 +75,16 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);height
 .ppop-load{color:#888;font-size:11px;font-style:italic;}
 ::-webkit-scrollbar{width:3px;}
 ::-webkit-scrollbar-thumb{background:var(--brd);border-radius:2px;}
+@media(max-width:640px){
+  .panel{display:none;}
+  #btn-panel{display:inline-flex;}
+  .hdr-right{gap:4px;}
+  .btn{padding:3px 6px;font-size:9px;}
+  .clk{display:none;}
+}
+@media(min-width:641px){
+  #btn-panel{display:none;}
+}
 </style>
 </head>
 <body>
@@ -89,6 +99,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);height
     <button class="btn on" id="btn-veh" onclick="toggleVeh()">🔴 Trains</button>
     <button class="btn on" id="btn-wc" onclick="toggleWC()" title="Accessible stations">♿</button>
     <button class="btn" id="btn-fs" onclick="toggleFS()" title="Full screen">⛶ Full</button>
+    <button class="btn on" id="btn-panel" onclick="togglePanel()" title="Show/hide status panel">☰ Panel</button>
   </div>
 </div>
 <div class="main">
@@ -131,7 +142,7 @@ const META={
 CR.forEach(r=>META[r]={c:'#80276C',l:'CR',n:r.replace('CR-',''),t:'cr'});
 SL.forEach(r=>META[r]={c:'#7C878E',l:'SL',n:'Silver Line',t:'sl'});
 
-let mbl,vmarkers={},stalerts={},vehOn=true,wcOn=true,lon={subway:true,cr:true,sl:true};
+let mbl,vmarkers={},vbearing={},stalerts={},vehOn=true,wcOn=true,lon={subway:true,cr:true,sl:true};
 let DIRS={}; // routeId -> ['Dest A','Dest B']
 async function loadDirs(){
   try{
@@ -175,6 +186,14 @@ function toggleWC(){
   wcOn=!wcOn;
   document.getElementById('btn-wc').classList.toggle('on',wcOn);
   if(mbl&&mbl.getLayer('stops-wc'))mbl.setLayoutProperty('stops-wc','visibility',wcOn?'visible':'none');
+}
+function togglePanel(){
+  const panel=document.querySelector('.panel');
+  const btn=document.getElementById('btn-panel');
+  const hidden=panel.style.display==='none';
+  panel.style.display=hidden?'':'none';
+  btn.classList.toggle('on',hidden);
+  if(mbl)mbl.resize();
 }
 function toggleFS(){
   if(!document.fullscreenElement){
@@ -413,13 +432,21 @@ function updVeh(veh){
     seen.add(v.id);
     if(vmarkers[v.id]){
       vmarkers[v.id].setLngLat([a.longitude,a.latitude]);
-      if(typeof vmarkers[v.id].setRotation==='function'&&a.bearing!==null&&a.bearing!==undefined)vmarkers[v.id].setRotation(a.bearing);
+      if(a.bearing!==null&&a.bearing!==undefined) vbearing[v.id]=a.bearing;
+      const effBearing=vbearing[v.id]||0;
+      if(typeof vmarkers[v.id].setRotation==='function') vmarkers[v.id].setRotation(effBearing);
+      // Dim SVG if bearing is currently null (stopped/unknown direction)
+      const svgEl=vmarkers[v.id].getElement().querySelector('polygon,circle');
+      if(svgEl) svgEl.setAttribute('opacity', a.bearing===null?'0.45':'1');
       return;
     }
     // Create SVG — arrow if bearing known, circle if null (stopped/unknown)
     const ns='http://www.w3.org/2000/svg';
     const svg=document.createElementNS(ns,'svg');
-    const hasBearing = a.bearing !== null && a.bearing !== undefined;
+    if(a.bearing!==null&&a.bearing!==undefined) vbearing[v.id]=a.bearing;
+    const effBear = vbearing[v.id]; // last known or current
+    const hasBearing = effBear !== undefined && effBear !== null;
+    const bearingNull = a.bearing===null||a.bearing===undefined; // currently unknown
     if(hasBearing){
       svg.setAttribute('width','16');svg.setAttribute('height','20');svg.setAttribute('viewBox','0 0 16 20');
       svg.style.cssText='filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));display:block;';
@@ -437,7 +464,9 @@ function updVeh(veh){
       circle.setAttribute('fill',m.c);circle.setAttribute('stroke','white');circle.setAttribute('stroke-width','2');
       svg.appendChild(circle);
     }
-    const mk=new maplibregl.Marker({element:svg,rotation:hasBearing?(a.bearing||0):0,rotationAlignment:'map',pitchAlignment:'map'})
+    // Dim if bearing currently null (use last known direction but visually indicate uncertainty)
+    if(hasBearing){const sh=svg.querySelector('polygon,circle');if(sh)sh.setAttribute('opacity',bearingNull?'0.45':'1');}
+    const mk=new maplibregl.Marker({element:svg,rotation:hasBearing?effBear:0,rotationAlignment:'map',pitchAlignment:'map'})
       .setLngLat([a.longitude,a.latitude]).addTo(mbl);
     // Attach click to the wrapper MapLibre creates
     const wrapper=mk.getElement();
