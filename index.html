@@ -163,7 +163,7 @@ CR.forEach(r=>META[r]={c:'#80276C',l:'CR',n:r.replace('CR-',''),t:'cr'});
 SL.forEach(r=>META[r]={c:'#7C878E',l:'SL',n:'Silver Line',t:'sl'});
 
 // State
-let mbl, vmarkers={}, vtrails={}, vposHist={}, stalerts={};
+let mbl, vmarkers={}, stalerts={};
 let vehOn=true, wcOn=true, lon={subway:true,cr:true,sl:true};
 let allAlerts=[], allVeh=[];
 
@@ -184,12 +184,17 @@ function toggleLayer(l){
   if(!mbl)return;
   const v=lon[l]?'visible':'none';
   mbl.getStyle().layers.forEach(ly=>{if(ly.id.startsWith(l+'-'))mbl.setLayoutProperty(ly.id,'visibility',v);});
+  // Subway toggle also controls station dots/labels/wc ring
+  if(l==='subway'){
+    ['stops-wc','stops-ring','stops-dot','stops-lbl'].forEach(id=>{
+      if(mbl.getLayer(id))mbl.setLayoutProperty(id,'visibility',v);
+    });
+  }
 }
 function toggleVeh(){
   vehOn=!vehOn;
   document.getElementById('btn-veh').classList.toggle('on',vehOn);
   Object.values(vmarkers).forEach(m=>m.getElement().style.display=vehOn?'block':'none');
-  Object.values(vtrails).flat().forEach(m=>m.getElement().style.display=vehOn?'block':'none');
 }
 function toggleWC(){
   wcOn=!wcOn;
@@ -449,23 +454,6 @@ function occEmoji(o){
   return'🔴';
 }
 
-function updateTrail(id,lng,lat,color){
-  if(!vposHist[id])vposHist[id]=[];
-  const pos=[lng,lat];
-  const last=vposHist[id][vposHist[id].length-1];
-  if(last&&last[0]===lng&&last[1]===lat)return; // no movement
-  vposHist[id].push(pos);
-  if(vposHist[id].length>4)vposHist[id].shift();
-  clearTrail(id);
-  vtrails[id]=vposHist[id].slice(0,-1).map((p,i,arr)=>{
-    const opacity=((i+1)/arr.length)*0.45;
-    const sz=7+i*2;
-    const el=document.createElement('div');
-    el.style.cssText='width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+color+';opacity:'+opacity+';pointer-events:none;border:1px solid rgba(255,255,255,0.3);display:block;';
-    return new maplibregl.Marker({element:el,anchor:'center'}).setLngLat(p).addTo(mbl);
-  });
-}
-function clearTrail(id){(vtrails[id]||[]).forEach(m=>m.remove());vtrails[id]=[];}
 
 async function doVeh(){
   try{
@@ -490,7 +478,6 @@ function updVeh(veh){
     if(vmarkers[v.id]){
       vmarkers[v.id].setLngLat([a.longitude,a.latitude]);
       if(typeof vmarkers[v.id].setRotation==='function')vmarkers[v.id].setRotation(a.bearing||0);
-      updateTrail(v.id,a.longitude,a.latitude,m.c);
       return;
     }
     // Arrow SVG marker
@@ -513,9 +500,8 @@ function updVeh(veh){
       ).addTo(mbl);
     });
     vmarkers[v.id]=mk;
-    updateTrail(v.id,a.longitude,a.latitude,m.c);
   });
-  Object.keys(vmarkers).forEach(id=>{if(!seen.has(id)){vmarkers[id].remove();clearTrail(id);delete vmarkers[id];delete vposHist[id];}});
+  Object.keys(vmarkers).forEach(id=>{if(!seen.has(id)){vmarkers[id].remove();delete vmarkers[id];}});
 }
 
 function renderVeh(veh){
