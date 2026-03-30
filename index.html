@@ -49,6 +49,18 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .footer{padding:5px 14px;background:var(--surface);border-top:1px solid var(--border);display:flex;gap:16px;font-size:10px;color:var(--muted);flex-shrink:0;font-family:'JetBrains Mono',monospace;}
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 .maplibregl-popup-content{padding:12px;border-radius:8px;max-width:240px;font-family:'Inter',sans-serif;}
+.hover-popup{position:absolute;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;pointer-events:none;min-width:180px;max-width:240px;box-shadow:0 4px 20px rgba(0,0,0,.5);font-size:11px;}
+.hp-name{font-weight:700;font-size:13px;margin-bottom:4px;color:var(--text);}
+.hp-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.hp-row:last-child{border-bottom:none;}
+.hp-dir{color:var(--muted);}
+.hp-time{font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);}
+.hp-occ{font-size:10px;padding:1px 4px;border-radius:3px;}
+.hp-occ-many{background:rgba(34,197,94,.2);color:#22c55e;}
+.hp-occ-few{background:rgba(245,158,11,.2);color:#f59e0b;}
+.hp-occ-stand{background:rgba(239,68,68,.2);color:#ef4444;}
+.hp-occ-none{color:var(--muted);}
+.hp-loading{color:var(--muted);font-style:italic;}
 .pstation{font-weight:700;font-size:14px;margin-bottom:6px;}
 .prow{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;font-size:12px;}
 .prow:last-child{border-bottom:none;}
@@ -68,10 +80,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
     <button class="tbtn on" id="btn-cr" onclick="toggleLayer('cr')">🚂 Commuter Rail</button>
     <button class="tbtn on" id="btn-sl" onclick="toggleLayer('sl')">🚌 Silver Line</button>
     <button class="tbtn on" id="btn-veh" onclick="toggleVeh()">🔴 Trains</button>
+    <button class="tbtn on" id="btn-wc" onclick="toggleWC()" title="Wheelchair accessible stations">♿ Access</button>
+    <button class="tbtn" id="btn-fs" onclick="toggleFS()" title="Full screen">⛶</button>
   </div>
 </div>
 <div class="main">
-  <div id="map"></div>
+  <div id="map" style="position:relative;flex:1;min-width:0;"></div>
   <div class="panel">
     <div class="ptabs">
       <div class="ptab on" onclick="sPTab('status')">STATUS</div>
@@ -92,6 +106,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
   <span>Alerts: <b id="ftat">—</b></span>
   <span style="margin-left:auto;">MBTA API v3 · MapLibre GL</span>
 </div>
+<div id="hover-popup" class="hover-popup" style="display:none;"></div>
 <script>
 const API='https://api-v3.mbta.com';
 const SUBWAY=['Red','Mattapan','Orange','Green-B','Green-C','Green-D','Green-E','Blue'];
@@ -110,7 +125,7 @@ const META={
 CR.forEach(r=>META[r]={c:'#80276C',l:'CR',n:r.replace('CR-',''),t:'cr'});
 SL.forEach(r=>META[r]={c:'#7C878E',l:'SL',n:'Silver Line',t:'sl'});
 
-let map,vmarkers={},stalerts={},vehOn=true,lon={subway:true,cr:true,sl:true};
+let map,vmarkers={},vtrails={},stalerts={},vposHistory={},vehOn=true,wcOn=true,lon={subway:true,cr:true,sl:true};
 let allAlerts=[],allVeh=[];
 
 setInterval(()=>document.getElementById('clk').textContent=new Date().toLocaleTimeString('en-US',{hour12:false}),1000);
@@ -126,6 +141,18 @@ function toggleLayer(l){
   if(!map)return;
   const v=lon[l]?'visible':'none';
   map.getStyle().layers.forEach(ly=>{if(ly.id.startsWith(l+'-'))map.setLayoutProperty(ly.id,'visibility',v);});
+}
+function toggleFS(){
+  if(!document.fullscreenElement){ document.documentElement.requestFullscreen(); document.getElementById('btn-fs').textContent='✕'; document.getElementById('btn-fs').classList.add('on'); }
+  else { document.exitFullscreen(); document.getElementById('btn-fs').textContent='⛶'; document.getElementById('btn-fs').classList.remove('on'); }
+}
+let wcOn=true;
+function toggleWC(){
+  wcOn=!wcOn;
+  document.getElementById('btn-wc').classList.toggle('on',wcOn);
+  if(map&&map.getLayer('stops-wc')){
+    map.setLayoutProperty('stops-wc','visibility',wcOn?'visible':'none');
+  }
 }
 function toggleVeh(){
   vehOn=!vehOn;
@@ -179,6 +206,14 @@ async function loadShapes(){
   }
 }
 
+function posHoverPopup(e){
+  const hp=document.getElementById('hover-popup');
+  const rect=document.getElementById('map').getBoundingClientRect();
+  const x=e.originalEvent.clientX-rect.left;
+  const y=e.originalEvent.clientY-rect.top;
+  hp.style.left=(x+14)+'px';
+  hp.style.top=(y-10)+'px';
+}
 async function loadStations(){
   const rts=SUBWAY.join(',');
   const d=await fetch(`${API}/stops?filter[route]=${rts}&fields[stop]=name,latitude,longitude,municipality,wheelchair_boarding`).then(r=>r.json());
@@ -193,12 +228,21 @@ async function loadStations(){
   map.addLayer({id:'stops-ring',type:'circle',source:'stops',paint:{
     'circle-radius':['interpolate',['linear'],['zoom'],10,4,13,8,16,13],
     'circle-color':'#fff','circle-stroke-width':1.5,'circle-stroke-color':'#333','circle-opacity':1}});
+  // Accessible station outer glow ring
+  map.addLayer({id:'stops-wc',type:'circle',source:'stops',
+    filter:['==',['get','wc'],1],
+    paint:{
+      'circle-radius':['interpolate',['linear'],['zoom'],10,7,13,12,16,18],
+      'circle-color':'rgba(0,0,0,0)','circle-stroke-width':2,
+      'circle-stroke-color':'#60a5fa','circle-stroke-opacity':['case',['boolean',['feature-state','wc-on'],true],0.8,0],
+      'circle-opacity':0}},
+    'stops-ring');
   map.addLayer({id:'stops-dot',type:'circle',source:'stops',paint:{
     'circle-radius':['interpolate',['linear'],['zoom'],10,2.5,13,5,16,8],
     'circle-color':['case',['boolean',['feature-state','alert'],false],'#ef4444',['boolean',['feature-state','warn'],false],'#f59e0b','#22c55e'],'circle-opacity':0.95}});
-  map.addLayer({id:'stops-lbl',type:'symbol',source:'stops',minzoom:13,
-    layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':10,'text-anchor':'top','text-offset':[0,0.8],'text-allow-overlap':false},
-    paint:{'text-color':'#e8edf5','text-halo-color':'#0a0e1a','text-halo-width':1.5}});
+  map.addLayer({id:'stops-lbl',type:'symbol',source:'stops',minzoom:12,
+    layout:{'text-field':['get','name'],'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],12,11,14,13,16,15],'text-anchor':'top','text-offset':[0,1.0],'text-allow-overlap':false,'text-ignore-placement':false,'text-max-width':8},
+    paint:{'text-color':'#ffffff','text-halo-color':'rgba(10,14,26,0.95)','text-halo-width':2,'text-halo-blur':0}});
   map.on('click','stops-ring',async e=>{
     const f=e.features[0];if(!f)return;
     const p=f.properties;
@@ -221,8 +265,50 @@ async function loadStations(){
       }).join('');
     }catch(e){const el=document.getElementById('pr-'+f.id);if(el)el.textContent='Could not load arrivals';}
   });
-  map.on('mouseenter','stops-ring',()=>{map.getCanvas().style.cursor='pointer';});
-  map.on('mouseleave','stops-ring',()=>{map.getCanvas().style.cursor='';});
+  // Click for detailed predictions popup
+  map.on('mouseenter','stops-ring', async e=>{
+    map.getCanvas().style.cursor='pointer';
+    const f=e.features[0];if(!f)return;
+    const p=f.properties;
+    const hp=document.getElementById('hover-popup');
+    hp.style.display='block';
+    hp.innerHTML='<div class="hp-name">'+p.name+'</div>'+(p.wc==1?'<div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">♿ Accessible</div>':'')+
+      '<div class="hp-loading">Loading arrivals…</div>';
+    posHoverPopup(e);
+    // Fetch predictions with vehicle included for occupancy
+    try{
+      const pd=await fetch(API+'/predictions?filter[stop]='+f.id+'&fields[prediction]=arrival_time,departure_time,direction_id,status&include=vehicle,route&page[limit]=6&sort=arrival_time').then(r=>r.json());
+      if(hp.style.display==='none')return;
+      const rm={};const vm={};
+      (pd.included||[]).forEach(x=>{ if(x.type==='route')rm[x.id]=x; if(x.type==='vehicle')vm[x.id]=x; });
+      if(!pd.data.length){hp.innerHTML='<div class="hp-name">'+p.name+'</div><div class="hp-loading">No upcoming arrivals</div>';return;}
+      const rows=pd.data.slice(0,5).map(pr=>{
+        const a=pr.attributes;
+        const t=a.arrival_time||a.departure_time;
+        const rid=pr.relationships?.route?.data?.id||'';
+        const vid=pr.relationships?.vehicle?.data?.id;
+        const vdata=vid?vm[vid]:null;
+        const m2=META[rid];
+        const col=m2?m2.c:'#888';
+        const ts=t?(()=>{const d=Math.round((new Date(t)-Date.now())/60000);return d<=0?'Now':d+'m';})():(a.status||'—');
+        const dir=a.direction_id===0?'→ Out':'← In';
+        // Occupancy from vehicle assigned to this trip
+        let occHtml='';
+        if(vdata){
+          const occ=vdata.attributes.occupancy_status;
+          if(occ&&occ!=='NO_DATA_AVAILABLE'){
+            const occMap={'MANY_SEATS_AVAILABLE':['many','🟢 Plenty'],'FEW_SEATS_AVAILABLE':['few','🟡 Few seats'],'STANDING_ROOM_ONLY':['stand','🔴 Standing'],'CRUSHED_STANDING_ROOM_ONLY':['stand','🔴 Packed'],'FULL':['stand','🔴 Full']};
+            const [cls,lbl]=occMap[occ]||['none',occ];
+            occHtml='<span class="hp-occ hp-occ-'+cls+'">'+lbl+'</span>';
+          }
+        }
+        return '<div class="hp-row"><span style="color:'+col+';font-weight:700;font-size:10px">'+rid+'</span><span class="hp-dir">'+dir+'</span><span class="hp-time">'+ts+'</span>'+occHtml+'</div>';
+      }).join('');
+      hp.innerHTML='<div class="hp-name">'+p.name+'</div>'+(p.wc==1?'<div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">♿ Accessible</div>':'')+rows;
+    }catch(e2){if(hp.style.display!=='none')hp.innerHTML='<div class="hp-name">'+p.name+'</div><div class="hp-loading">Could not load</div>';}
+  });
+  map.on('mousemove','stops-ring',posHoverPopup);
+  map.on('mouseleave','stops-ring',()=>{ map.getCanvas().style.cursor=''; document.getElementById('hover-popup').style.display='none'; });
 }
 
 async function doAlerts(){
@@ -283,7 +369,7 @@ function renderStatus(){
 
 async function doVeh(){
   try{
-    const rts=[...SUBWAY,...SL].join(',');
+    const rts=[...SUBWAY,...SL,...CR].join(',');
     const d=await fetch(`${API}/vehicles?filter[route]=${rts}&fields[vehicle]=label,latitude,longitude,bearing,current_status,speed,occupancy_status,direction_id&include=route`).then(r=>r.json());
     allVeh=d.data;
     const rm={};(d.included||[]).filter(x=>x.type==='route').forEach(r=>{rm[r.id]=r;});
@@ -300,6 +386,28 @@ function occEmoji(o){
   return'🟢';
 }
 
+function updateTrail(id, lng, lat, color){
+  if(!vposHistory[id]) vposHistory[id]=[];
+  vposHistory[id].push([lng,lat]);
+  if(vposHistory[id].length>4) vposHistory[id].shift();
+  // Remove old trail markers
+  clearTrail(id);
+  // Draw ghost dots for positions 0..N-2 (not current)
+  const hist = vposHistory[id];
+  vtrails[id]=[];
+  for(let i=0;i<hist.length-1;i++){
+    const opacity = (i+1)/(hist.length)*0.5; // fade older ones more
+    const size = 8 + i*2;
+    const el=document.createElement('div');
+    el.style.cssText='width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';opacity:'+opacity+';pointer-events:none;border:1px solid rgba(255,255,255,0.4);';
+    const tm=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat(hist[i]).addTo(map);
+    vtrails[id].push(tm);
+  }
+}
+function clearTrail(id){
+  (vtrails[id]||[]).forEach(m=>m.remove());
+  vtrails[id]=[];
+}
 function updVeh(veh){
   const seen=new Set();
   veh.forEach(v=>{
@@ -311,6 +419,7 @@ function updVeh(veh){
       vmarkers[v.id].setLngLat([a.longitude,a.latitude]);
       // Update rotation via MapLibre marker API (respects map orientation)
       if(typeof vmarkers[v.id].setRotation==='function') vmarkers[v.id].setRotation(a.bearing||0);
+      updateTrail(v.id, a.longitude, a.latitude, m.c);
       return;
     }
     // Arrow SVG: teardrop/chevron pointing up, rotated by bearing via MapLibre (not CSS)
@@ -331,8 +440,9 @@ function updVeh(veh){
       ).addTo(map);
     });
     vmarkers[v.id]=mk;
+    updateTrail(v.id, a.longitude, a.latitude, m.c);
   });
-  Object.keys(vmarkers).forEach(id=>{if(!seen.has(id)){vmarkers[id].remove();delete vmarkers[id];}});
+  Object.keys(vmarkers).forEach(id=>{if(!seen.has(id)){vmarkers[id].remove();delete vmarkers[id];clearTrail(id);}});
 }
 
 function renderVeh(veh){
