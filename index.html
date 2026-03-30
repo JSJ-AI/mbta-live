@@ -2,90 +2,124 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>MBTA Live — Boston Transit</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-:root{--bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:#1e2d47;--text:#e8edf5;--muted:#6b7a99;--accent:#4f9cff;--green-ok:#22c55e;--yellow-warn:#f59e0b;--red-alert:#ef4444;}
+:root{
+  --bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:#1e2d47;
+  --text:#e8edf5;--muted:#6b7a99;--accent:#4f9cff;
+  --ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;
+}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
-.header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
-.logo{font-weight:700;font-size:18px;color:var(--text);}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;}
+.logo{font-weight:700;font-size:17px;color:var(--text);white-space:nowrap;}
 .logo span{color:var(--accent);}
-.live-badge{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--green-ok);background:rgba(34,197,94,.1);padding:3px 8px;border-radius:4px;border:1px solid rgba(34,197,94,.3);}
-.live-dot{width:6px;height:6px;background:var(--green-ok);border-radius:50%;animation:blink 1.5s infinite;}
-@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
-.header-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
-.clock{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);}
-.tbtn{padding:5px 10px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);border-radius:5px;cursor:pointer;font-size:11px;font-weight:600;transition:all .2s;}
-.tbtn.on{background:rgba(79,156,255,.15);border-color:var(--accent);color:var(--accent);}
-.main{display:flex;flex:1;min-height:0;}
-#map{flex:1;min-width:0;}
-.panel{width:300px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
-.ptabs{display:flex;border-bottom:1px solid var(--border);}
-.ptab{flex:1;padding:9px 4px;text-align:center;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
+.live-badge{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:var(--ok);background:rgba(34,197,94,.1);padding:3px 7px;border-radius:4px;border:1px solid rgba(34,197,94,.3);}
+.dot{width:5px;height:5px;background:var(--ok);border-radius:50%;animation:blink 1.5s infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.2;}}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.clk{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);}
+.btn{padding:4px 9px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);border-radius:5px;cursor:pointer;font-size:10px;font-weight:600;letter-spacing:.04em;transition:all .15s;white-space:nowrap;}
+.btn.on{background:rgba(79,156,255,.15);border-color:var(--accent);color:var(--accent);}
+.btn:hover{color:var(--text);border-color:var(--muted);}
+
+/* LAYOUT */
+.main{display:flex;flex:1;min-height:0;position:relative;}
+#map-wrap{flex:1;min-width:0;position:relative;}
+#map{width:100%;height:100%;}
+
+/* HOVER POPUP */
+.hpop{position:absolute;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;pointer-events:none;min-width:190px;max-width:250px;box-shadow:0 4px 24px rgba(0,0,0,.6);display:none;}
+.hpop-name{font-weight:700;font-size:13px;margin-bottom:3px;color:var(--text);}
+.hpop-sub{font-size:10px;color:var(--accent);margin-bottom:6px;}
+.hpop-row{display:flex;align-items:center;gap:4px;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.hpop-row:last-child{border-bottom:none;}
+.hpop-rid{font-weight:700;font-size:10px;min-width:48px;}
+.hpop-dir{color:var(--muted);flex:1;font-size:10px;}
+.hpop-time{font-weight:700;font-family:'JetBrains Mono',monospace;min-width:28px;text-align:right;}
+.hpop-occ{font-size:9px;padding:1px 4px;border-radius:3px;margin-left:3px;white-space:nowrap;}
+.occ-many{background:rgba(34,197,94,.2);color:var(--ok);}
+.occ-few{background:rgba(245,158,11,.2);color:var(--warn);}
+.occ-full{background:rgba(239,68,68,.2);color:var(--bad);}
+.hpop-load{color:var(--muted);font-size:11px;font-style:italic;}
+
+/* RIGHT PANEL */
+.panel{width:290px;flex-shrink:0;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.ptabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.ptab{flex:1;padding:8px 4px;text-align:center;font-size:10px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;letter-spacing:.04em;}
 .ptab.on{color:var(--accent);border-bottom-color:var(--accent);}
-.pbody{flex:1;overflow-y:auto;padding:12px;}
+.pbody{flex:1;overflow-y:auto;padding:10px;}
 .psec{display:none;}.psec.on{display:block;}
-.line-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;margin-bottom:6px;background:var(--surface2);cursor:pointer;}
-.line-pill{width:38px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;}
-.line-name{flex:1;font-size:12px;font-weight:500;}
-.lstat{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;}
-.ok{background:rgba(34,197,94,.15);color:var(--green-ok);}
-.warn{background:rgba(245,158,11,.15);color:var(--yellow-warn);}
-.bad{background:rgba(239,68,68,.15);color:var(--red-alert);}
-.abadge{background:var(--red-alert);color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;}
-.alert-item{padding:10px;border-radius:7px;margin-bottom:8px;background:var(--surface2);border-left:3px solid var(--yellow-warn);}
-.alert-item.hi{border-left-color:var(--red-alert);}
-.aroute{font-size:10px;font-weight:700;color:var(--muted);margin-bottom:3px;}
-.ahead{font-size:11px;line-height:1.4;}
-.aeff{font-size:10px;font-weight:600;color:var(--yellow-warn);margin-top:3px;}
-.vitem{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:7px;margin-bottom:5px;background:var(--surface2);cursor:pointer;}
-.vico{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;}
-.vlbl{font-size:12px;font-weight:600;font-family:'JetBrains Mono',monospace;}
-.vst{font-size:10px;color:var(--muted);margin-top:1px;}
-.footer{padding:5px 14px;background:var(--surface);border-top:1px solid var(--border);display:flex;gap:16px;font-size:10px;color:var(--muted);flex-shrink:0;font-family:'JetBrains Mono',monospace;}
-::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-.maplibregl-popup-content{padding:12px;border-radius:8px;max-width:240px;font-family:'Inter',sans-serif;}
-.hover-popup{position:absolute;z-index:100;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;pointer-events:none;min-width:180px;max-width:240px;box-shadow:0 4px 20px rgba(0,0,0,.5);font-size:11px;}
-.hp-name{font-weight:700;font-size:13px;margin-bottom:4px;color:var(--text);}
-.hp-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border);font-size:11px;}
-.hp-row:last-child{border-bottom:none;}
-.hp-dir{color:var(--muted);}
-.hp-time{font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);}
-.hp-occ{font-size:10px;padding:1px 4px;border-radius:3px;}
-.hp-occ-many{background:rgba(34,197,94,.2);color:#22c55e;}
-.hp-occ-few{background:rgba(245,158,11,.2);color:#f59e0b;}
-.hp-occ-stand{background:rgba(239,68,68,.2);color:#ef4444;}
-.hp-occ-none{color:var(--muted);}
-.hp-loading{color:var(--muted);font-style:italic;}
-.pstation{font-weight:700;font-size:14px;margin-bottom:6px;}
-.prow{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;font-size:12px;}
+
+/* LINE STATUS */
+.lrow{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:6px;margin-bottom:5px;background:var(--surface2);cursor:pointer;transition:background .15s;}
+.lrow:hover{background:var(--border);}
+.lpill{width:36px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0;letter-spacing:.03em;}
+.lname{flex:1;font-size:11px;font-weight:500;}
+.lstat{font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;}
+.s-ok{background:rgba(34,197,94,.15);color:var(--ok);}
+.s-warn{background:rgba(245,158,11,.15);color:var(--warn);}
+.s-bad{background:rgba(239,68,68,.15);color:var(--bad);}
+.abadge{background:var(--bad);color:#fff;border-radius:8px;font-size:8px;font-weight:800;padding:1px 4px;}
+
+/* ALERTS */
+.aitem{padding:9px;border-radius:6px;margin-bottom:7px;background:var(--surface2);border-left:3px solid var(--warn);}
+.aitem.hi{border-left-color:var(--bad);}
+.aitem.lo{border-left-color:var(--border);}
+.aroute{font-size:9px;font-weight:800;color:var(--muted);margin-bottom:3px;letter-spacing:.04em;}
+.ahead{font-size:11px;line-height:1.4;color:var(--text);}
+.aeff{font-size:9px;font-weight:700;color:var(--warn);margin-top:3px;text-transform:uppercase;letter-spacing:.04em;}
+
+/* VEHICLES */
+.vitem{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:6px;margin-bottom:4px;background:var(--surface2);cursor:pointer;transition:background .15s;}
+.vitem:hover{background:var(--border);}
+.vico{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0;}
+.vlbl{font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace;}
+.vst{font-size:9px;color:var(--muted);margin-top:1px;}
+
+/* FOOTER */
+.ftr{padding:4px 12px;background:var(--surface);border-top:1px solid var(--border);display:flex;gap:14px;font-size:9px;color:var(--muted);flex-shrink:0;font-family:'JetBrains Mono',monospace;flex-wrap:wrap;}
+.ftr b{color:var(--text);}
+
+/* POPUP */
+.maplibregl-popup-content{padding:11px;border-radius:8px;max-width:230px;font-family:'Inter',sans-serif;}
+.pname{font-weight:700;font-size:13px;margin-bottom:4px;}
+.ptag{display:inline-block;padding:2px 6px;border-radius:8px;font-size:9px;font-weight:800;color:#fff;margin-bottom:5px;}
+.prow{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #eee;font-size:11px;}
 .prow:last-child{border-bottom:none;}
 .ptime{font-weight:700;font-family:'JetBrains Mono',monospace;}
-.pload{color:#888;font-size:12px;font-style:italic;}
-.palert{background:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:5px 8px;font-size:11px;color:#856404;margin-top:5px;}
-.ptag{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;color:#fff;margin-bottom:6px;}
+.pload{color:#888;font-size:11px;font-style:italic;}
+
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 </style>
 </head>
 <body>
-<div class="header">
+<div class="hdr">
   <div class="logo">MBTA <span>Live</span></div>
-  <div class="live-badge"><div class="live-dot"></div>LIVE</div>
-  <div class="header-right">
-    <div class="clock" id="clk">--:--:--</div>
-    <button class="tbtn on" id="btn-subway" onclick="toggleLayer('subway')">🚇 Subway</button>
-    <button class="tbtn on" id="btn-cr" onclick="toggleLayer('cr')">🚂 Commuter Rail</button>
-    <button class="tbtn on" id="btn-sl" onclick="toggleLayer('sl')">🚌 Silver Line</button>
-    <button class="tbtn on" id="btn-veh" onclick="toggleVeh()">🔴 Trains</button>
-    <button class="tbtn on" id="btn-wc" onclick="toggleWC()" title="Wheelchair accessible stations">♿ Access</button>
-    <button class="tbtn" id="btn-fs" onclick="toggleFS()" title="Full screen">⛶</button>
+  <div class="live-badge"><div class="dot"></div>LIVE</div>
+  <div class="hdr-right">
+    <div class="clk" id="clk">--:--:--</div>
+    <button class="btn on" id="btn-subway" onclick="toggleLayer('subway')">🚇 Subway</button>
+    <button class="btn on" id="btn-cr" onclick="toggleLayer('cr')">🚂 Commuter Rail</button>
+    <button class="btn on" id="btn-sl" onclick="toggleLayer('sl')">🚌 Silver Line</button>
+    <button class="btn on" id="btn-veh" onclick="toggleVeh()">🔴 Trains</button>
+    <button class="btn on" id="btn-wc" onclick="toggleWC()" title="Wheelchair accessible stations">♿</button>
+    <button class="btn" id="btn-fs" onclick="toggleFS()" title="Full screen">⛶ Full</button>
   </div>
 </div>
+
 <div class="main">
-  <div id="map" style="position:relative;flex:1;min-width:0;"></div>
+  <div id="map-wrap">
+    <div id="map"></div>
+    <div class="hpop" id="hpop"></div>
+  </div>
   <div class="panel">
     <div class="ptabs">
       <div class="ptab on" onclick="sPTab('status')">STATUS</div>
@@ -93,25 +127,28 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
       <div class="ptab" onclick="sPTab('vehicles')">TRAINS</div>
     </div>
     <div class="pbody">
-      <div class="psec on" id="sec-status"><div id="line-list" style="color:var(--muted);font-size:12px;padding:20px;text-align:center;">Loading…</div></div>
-      <div class="psec" id="sec-alerts"><div id="alert-list" style="color:var(--muted);font-size:12px;padding:20px;text-align:center;">Loading…</div></div>
-      <div class="psec" id="sec-vehicles"><div id="veh-list" style="color:var(--muted);font-size:12px;padding:20px;text-align:center;">Loading…</div></div>
+      <div class="psec on" id="sec-status"><div id="line-list" style="color:var(--muted);font-size:11px;padding:16px;text-align:center">Loading…</div></div>
+      <div class="psec" id="sec-alerts"><div id="alert-list" style="color:var(--muted);font-size:11px;padding:16px;text-align:center">Loading…</div></div>
+      <div class="psec" id="sec-vehicles"><div id="veh-list" style="color:var(--muted);font-size:11px;padding:16px;text-align:center">Loading…</div></div>
     </div>
   </div>
 </div>
-<div class="footer">
+
+<div class="ftr">
   <span>🚇 <b id="ftveh">—</b> trains</span>
   <span>⚠ <b id="ftalert">—</b> alerts</span>
   <span>Vehicles: <b id="ftvt">—</b></span>
   <span>Alerts: <b id="ftat">—</b></span>
-  <span style="margin-left:auto;">MBTA API v3 · MapLibre GL</span>
+  <span style="margin-left:auto">MBTA API v3 · MapLibre GL · OpenFreeMap</span>
 </div>
-<div id="hover-popup" class="hover-popup" style="display:none;"></div>
+
 <script>
 const API='https://api-v3.mbta.com';
 const SUBWAY=['Red','Mattapan','Orange','Green-B','Green-C','Green-D','Green-E','Blue'];
-const CR=['CR-Fairmount','CR-Fitchburg','CR-Greenbush','CR-Haverhill','CR-Kingston','CR-Lowell','CR-Needham','CR-Newburyport','CR-Providence','CR-Worcester','CR-NewBedford','CR-Franklin','CR-Franklin'];
+const CR=['CR-Fairmount','CR-Fitchburg','CR-Greenbush','CR-Haverhill','CR-Kingston','CR-Lowell','CR-Needham','CR-Newburyport','CR-Providence','CR-Worcester','CR-NewBedford','CR-Franklin'];
 const SL=['741','742','743','746','749','751'];
+const ALL_ROUTES=[...SUBWAY,...CR,...SL];
+
 const META={
   Red:{c:'#DA291C',l:'RL',n:'Red Line',t:'subway'},
   Mattapan:{c:'#DA291C',l:'MT',n:'Mattapan',t:'subway'},
@@ -125,55 +162,53 @@ const META={
 CR.forEach(r=>META[r]={c:'#80276C',l:'CR',n:r.replace('CR-',''),t:'cr'});
 SL.forEach(r=>META[r]={c:'#7C878E',l:'SL',n:'Silver Line',t:'sl'});
 
-let map,vmarkers={},vtrails={},stalerts={},vposHistory={},vehOn=true,wcOn=true,lon={subway:true,cr:true,sl:true};
-let allAlerts=[],allVeh=[];
+// State
+let mbl, vmarkers={}, vtrails={}, vposHist={}, stalerts={};
+let vehOn=true, wcOn=true, lon={subway:true,cr:true,sl:true};
+let allAlerts=[], allVeh=[];
 
+// Clock
 setInterval(()=>document.getElementById('clk').textContent=new Date().toLocaleTimeString('en-US',{hour12:false}),1000);
 
+// Panel tabs
 function sPTab(t){
   document.querySelectorAll('.ptab').forEach((el,i)=>el.classList.toggle('on',['status','alerts','vehicles'][i]===t));
   document.querySelectorAll('.psec').forEach(s=>s.classList.remove('on'));
   document.getElementById('sec-'+t).classList.add('on');
 }
+
+// Layer toggles
 function toggleLayer(l){
   lon[l]=!lon[l];
   document.getElementById('btn-'+l).classList.toggle('on',lon[l]);
-  if(!map)return;
+  if(!mbl)return;
   const v=lon[l]?'visible':'none';
-  map.getStyle().layers.forEach(ly=>{if(ly.id.startsWith(l+'-'))map.setLayoutProperty(ly.id,'visibility',v);});
-}
-function toggleFS(){
-  if(!document.fullscreenElement){ document.documentElement.requestFullscreen(); document.getElementById('btn-fs').textContent='✕'; document.getElementById('btn-fs').classList.add('on'); }
-  else { document.exitFullscreen(); document.getElementById('btn-fs').textContent='⛶'; document.getElementById('btn-fs').classList.remove('on'); }
-}
-let wcOn=true;
-function toggleWC(){
-  wcOn=!wcOn;
-  document.getElementById('btn-wc').classList.toggle('on',wcOn);
-  if(map&&map.getLayer('stops-wc')){
-    map.setLayoutProperty('stops-wc','visibility',wcOn?'visible':'none');
-  }
+  mbl.getStyle().layers.forEach(ly=>{if(ly.id.startsWith(l+'-'))mbl.setLayoutProperty(ly.id,'visibility',v);});
 }
 function toggleVeh(){
   vehOn=!vehOn;
   document.getElementById('btn-veh').classList.toggle('on',vehOn);
-  Object.values(vmarkers).forEach(m=>m.getElement().style.display=vehOn?'flex':'none');
+  Object.values(vmarkers).forEach(m=>m.getElement().style.display=vehOn?'block':'none');
+  Object.values(vtrails).flat().forEach(m=>m.getElement().style.display=vehOn?'block':'none');
+}
+function toggleWC(){
+  wcOn=!wcOn;
+  document.getElementById('btn-wc').classList.toggle('on',wcOn);
+  if(mbl&&mbl.getLayer('stops-wc'))mbl.setLayoutProperty('stops-wc','visibility',wcOn?'visible':'none');
+}
+function toggleFS(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen();
+    document.getElementById('btn-fs').textContent='✕ Exit';
+    document.getElementById('btn-fs').classList.add('on');
+  } else {
+    document.exitFullscreen();
+    document.getElementById('btn-fs').textContent='⛶ Full';
+    document.getElementById('btn-fs').classList.remove('on');
+  }
 }
 
-map=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/liberty',center:[-71.08,42.36],zoom:12,attributionControl:false});
-map.addControl(new maplibregl.NavigationControl(),'top-right');
-map.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
-
-map.on('load',async()=>{
-  map.setGlyphs('https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf');
-  await loadShapes();
-  await loadStations();
-  await doAlerts();
-  await doVeh();
-  setInterval(doVeh,15000);
-  setInterval(doAlerts,30000);
-});
-
+// Polyline decoder
 function decPoly(enc){
   const c=[];let i=0,la=0,lo=0;
   while(i<enc.length){
@@ -181,42 +216,55 @@ function decPoly(enc){
     do{b=enc.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20);
     la+=(res&1)?~(res>>1):(res>>1);sh=0;res=0;
     do{b=enc.charCodeAt(i++)-63;res|=(b&0x1f)<<sh;sh+=5;}while(b>=0x20);
-    lo+=(res&1)?~(res>>1):(res>>1);
-    c.push([lo/1e5,la/1e5]);
+    lo+=(res&1)?~(res>>1):(res>>1);c.push([lo/1e5,la/1e5]);
   }return c;
 }
 
-async function loadShapes(){
-  const all=[...SUBWAY,...CR,...SL];
-  for(const rid of all){
-    const m=META[rid];if(!m)continue;
-    try{
-      const d=await fetch(`${API}/shapes?filter[route]=${rid}&fields[shape]=polyline`).then(r=>r.json());
-      const feats=d.data.map(s=>({type:'Feature',geometry:{type:'LineString',coordinates:decPoly(s.attributes.polyline)},properties:{}}));
-      if(!feats.length)continue;
-      const sid='sh-'+rid;
-      map.addSource(sid,{type:'geojson',data:{type:'FeatureCollection',features:feats}});
-      map.addLayer({id:m.t+'-'+rid+'-c',type:'line',source:sid,
-        layout:{'line-join':'round','line-cap':'round',visibility:lon[m.t]?'visible':'none'},
-        paint:{'line-color':'#ffffff','line-width':['interpolate',['linear'],['zoom'],8,2,12,5,16,9],'line-opacity':0.5}});
-      map.addLayer({id:m.t+'-'+rid+'-f',type:'line',source:sid,
-        layout:{'line-join':'round','line-cap':'round',visibility:lon[m.t]?'visible':'none'},
-        paint:{'line-color':m.c,'line-width':['interpolate',['linear'],['zoom'],8,1.5,12,3.5,16,7],'line-opacity':0.95}});
-    }catch(e){console.warn('shape err',rid,e);}
-  }
+// ── MAP INIT ────────────────────────────────────────────────────────────────
+mbl=new maplibregl.Map({
+  container:'map',
+  style:'https://tiles.openfreemap.org/styles/liberty',
+  center:[-71.08,42.36],zoom:12,
+  attributionControl:false
+});
+mbl.addControl(new maplibregl.NavigationControl(),'top-right');
+mbl.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
+
+mbl.on('load',async()=>{
+  mbl.setGlyphs('https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf');
+  // Load all shapes in parallel
+  await Promise.all(ALL_ROUTES.map(rid=>loadShape(rid)));
+  await loadStations();
+  await doAlerts();
+  await doVeh();
+  setInterval(doVeh,15000);
+  setInterval(doAlerts,30000);
+});
+
+// ── SHAPES ──────────────────────────────────────────────────────────────────
+async function loadShape(rid){
+  const m=META[rid];if(!m)return;
+  try{
+    const d=await fetch(API+'/shapes?filter[route]='+rid+'&fields[shape]=polyline').then(r=>r.json());
+    const feats=d.data.map(s=>({type:'Feature',geometry:{type:'LineString',coordinates:decPoly(s.attributes.polyline)},properties:{}}));
+    if(!feats.length)return;
+    const sid='sh-'+rid;
+    mbl.addSource(sid,{type:'geojson',data:{type:'FeatureCollection',features:feats}});
+    // White casing
+    mbl.addLayer({id:m.t+'-'+rid+'-c',type:'line',source:sid,
+      layout:{'line-join':'round','line-cap':'round',visibility:lon[m.t]?'visible':'none'},
+      paint:{'line-color':'#ffffff','line-width':['interpolate',['linear'],['zoom'],8,2,12,5,16,9],'line-opacity':0.45}});
+    // Colored line
+    mbl.addLayer({id:m.t+'-'+rid+'-f',type:'line',source:sid,
+      layout:{'line-join':'round','line-cap':'round',visibility:lon[m.t]?'visible':'none'},
+      paint:{'line-color':m.c,'line-width':['interpolate',['linear'],['zoom'],8,1.5,12,3.5,16,7],'line-opacity':0.95}});
+  }catch(e){console.warn('shape',rid,e.message);}
 }
 
-function posHoverPopup(e){
-  const hp=document.getElementById('hover-popup');
-  const rect=document.getElementById('map').getBoundingClientRect();
-  const x=e.originalEvent.clientX-rect.left;
-  const y=e.originalEvent.clientY-rect.top;
-  hp.style.left=(x+14)+'px';
-  hp.style.top=(y-10)+'px';
-}
+// ── STATIONS ────────────────────────────────────────────────────────────────
 async function loadStations(){
   const rts=SUBWAY.join(',');
-  const d=await fetch(`${API}/stops?filter[route]=${rts}&fields[stop]=name,latitude,longitude,municipality,wheelchair_boarding`).then(r=>r.json());
+  const d=await fetch(API+'/stops?filter[route]='+rts+'&fields[stop]=name,latitude,longitude,municipality,wheelchair_boarding').then(r=>r.json());
   const seen=new Set();const feats=[];
   d.data.forEach(s=>{
     if(seen.has(s.id)||!s.attributes.latitude)return;
@@ -224,96 +272,122 @@ async function loadStations(){
     feats.push({type:'Feature',geometry:{type:'Point',coordinates:[a.longitude,a.latitude]},
       properties:{id:s.id,name:a.name,wc:a.wheelchair_boarding,muni:a.municipality||''}});
   });
-  map.addSource('stops',{type:'geojson',data:{type:'FeatureCollection',features:feats},promoteId:'id'});
-  map.addLayer({id:'stops-ring',type:'circle',source:'stops',paint:{
+  mbl.addSource('stops',{type:'geojson',data:{type:'FeatureCollection',features:feats},promoteId:'id'});
+  // Wheelchair ring (below main ring)
+  mbl.addLayer({id:'stops-wc',type:'circle',source:'stops',
+    filter:['==',['get','wc'],1],
+    layout:{visibility:wcOn?'visible':'none'},
+    paint:{
+      'circle-radius':['interpolate',['linear'],['zoom'],10,7,13,13,16,20],
+      'circle-color':'rgba(0,0,0,0)',
+      'circle-stroke-width':2.5,
+      'circle-stroke-color':'#60a5fa',
+      'circle-stroke-opacity':0.75,
+      'circle-opacity':0
+    }});
+  // White ring
+  mbl.addLayer({id:'stops-ring',type:'circle',source:'stops',paint:{
     'circle-radius':['interpolate',['linear'],['zoom'],10,4,13,8,16,13],
     'circle-color':'#fff','circle-stroke-width':1.5,'circle-stroke-color':'#333','circle-opacity':1}});
-  // Accessible station outer glow ring
-  map.addLayer({id:'stops-wc',type:'circle',source:'stops',
-    filter:['==',['get','wc'],1],
-    paint:{
-      'circle-radius':['interpolate',['linear'],['zoom'],10,7,13,12,16,18],
-      'circle-color':'rgba(0,0,0,0)','circle-stroke-width':2,
-      'circle-stroke-color':'#60a5fa','circle-stroke-opacity':['case',['boolean',['feature-state','wc-on'],true],0.8,0],
-      'circle-opacity':0}},
-    'stops-ring');
-  map.addLayer({id:'stops-dot',type:'circle',source:'stops',paint:{
+  // Status dot
+  mbl.addLayer({id:'stops-dot',type:'circle',source:'stops',paint:{
     'circle-radius':['interpolate',['linear'],['zoom'],10,2.5,13,5,16,8],
-    'circle-color':['case',['boolean',['feature-state','alert'],false],'#ef4444',['boolean',['feature-state','warn'],false],'#f59e0b','#22c55e'],'circle-opacity':0.95}});
-  map.addLayer({id:'stops-lbl',type:'symbol',source:'stops',minzoom:12,
-    layout:{'text-field':['get','name'],'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],12,11,14,13,16,15],'text-anchor':'top','text-offset':[0,1.0],'text-allow-overlap':false,'text-ignore-placement':false,'text-max-width':8},
-    paint:{'text-color':'#ffffff','text-halo-color':'rgba(10,14,26,0.95)','text-halo-width':2,'text-halo-blur':0}});
-  map.on('click','stops-ring',async e=>{
+    'circle-color':['case',
+      ['boolean',['feature-state','alert'],false],'#ef4444',
+      ['boolean',['feature-state','warn'],false],'#f59e0b',
+      '#22c55e'],
+    'circle-opacity':0.95}});
+  // Labels — crisp, bold, no blur
+  mbl.addLayer({id:'stops-lbl',type:'symbol',source:'stops',minzoom:12,
+    layout:{
+      'text-field':['get','name'],
+      'text-font':['Noto Sans Bold'],
+      'text-size':['interpolate',['linear'],['zoom'],12,11,14,13,16,15],
+      'text-anchor':'top','text-offset':[0,1.0],
+      'text-allow-overlap':false,'text-ignore-placement':false,'text-max-width':8
+    },
+    paint:{
+      'text-color':'#ffffff',
+      'text-halo-color':'rgba(5,8,16,0.98)',
+      'text-halo-width':2.2,
+      'text-halo-blur':0
+    }});
+
+  // HOVER — show popup with predictions + occupancy
+  mbl.on('mouseenter','stops-ring',async e=>{
+    mbl.getCanvas().style.cursor='pointer';
     const f=e.features[0];if(!f)return;
     const p=f.properties;
-    const sal=allAlerts.filter(a=>(a.attributes.informed_entity||[]).some(ie=>ie.stop===f.id));
-    const ahtml=sal.length?'<div class="palert">⚠ '+sal[0].attributes.header.substring(0,80)+'</div>':'';
-    const pop=new maplibregl.Popup({maxWidth:'250px'}).setLngLat(e.lngLat).setHTML(
-      '<div><div class="pstation">'+p.name+'</div>'+(p.muni?'<div style="font-size:10px;color:#666;margin-bottom:5px;">'+p.muni+(p.wc==1?' · ♿':'')+'</div>':'')+ahtml+'<div id="pr-'+f.id+'" class="pload">Fetching arrivals…</div></div>'
-    ).addTo(map);
-    try{
-      const pd=await fetch(`${API}/predictions?filter[stop]=${f.id}&fields[prediction]=arrival_time,departure_time,direction_id,status&include=route&page[limit]=8&sort=arrival_time`).then(r=>r.json());
-      const rm={};(pd.included||[]).filter(x=>x.type==='route').forEach(r=>{rm[r.id]=r;});
-      const el=document.getElementById('pr-'+f.id);if(!el)return;
-      if(!pd.data.length){el.textContent='No upcoming arrivals';return;}
-      el.innerHTML=pd.data.slice(0,6).map(pr=>{
-        const a=pr.attributes;const t=a.arrival_time||a.departure_time;
-        const rid=pr.relationships?.route?.data?.id||'';const m=META[rid];
-        const col=m?m.c:'#888';
-        const ts=t?(()=>{const d=Math.round((new Date(t)-Date.now())/60000);return d<=0?'Now':d+'m';})():(a.status||'—');
-        return '<div class="prow"><span style="color:'+col+';font-size:10px;font-weight:700">'+rid+'</span><span style="font-size:10px;color:#555">'+(a.direction_id===0?'→ Out':'← In')+'</span><span class="ptime">'+ts+'</span></div>';
-      }).join('');
-    }catch(e){const el=document.getElementById('pr-'+f.id);if(el)el.textContent='Could not load arrivals';}
-  });
-  // Click for detailed predictions popup
-  map.on('mouseenter','stops-ring', async e=>{
-    map.getCanvas().style.cursor='pointer';
-    const f=e.features[0];if(!f)return;
-    const p=f.properties;
-    const hp=document.getElementById('hover-popup');
+    const hp=document.getElementById('hpop');
     hp.style.display='block';
-    hp.innerHTML='<div class="hp-name">'+p.name+'</div>'+(p.wc==1?'<div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">♿ Accessible</div>':'')+
-      '<div class="hp-loading">Loading arrivals…</div>';
-    posHoverPopup(e);
-    // Fetch predictions with vehicle included for occupancy
+    hp.innerHTML='<div class="hpop-name">'+p.name+'</div>'+(p.wc==1?'<div class="hpop-sub">♿ Accessible</div>':'')+'<div class="hpop-load">Loading arrivals…</div>';
+    moveHpop(e);
     try{
-      const pd=await fetch(API+'/predictions?filter[stop]='+f.id+'&fields[prediction]=arrival_time,departure_time,direction_id,status&include=vehicle,route&page[limit]=6&sort=arrival_time').then(r=>r.json());
+      const pd=await fetch(API+'/predictions?filter[stop]='+f.id+'&fields[prediction]=arrival_time,departure_time,direction_id,status&include=vehicle,route&page[limit]=8&sort=arrival_time').then(r=>r.json());
       if(hp.style.display==='none')return;
       const rm={};const vm={};
-      (pd.included||[]).forEach(x=>{ if(x.type==='route')rm[x.id]=x; if(x.type==='vehicle')vm[x.id]=x; });
-      if(!pd.data.length){hp.innerHTML='<div class="hp-name">'+p.name+'</div><div class="hp-loading">No upcoming arrivals</div>';return;}
+      (pd.included||[]).forEach(x=>{if(x.type==='route')rm[x.id]=x;if(x.type==='vehicle')vm[x.id]=x;});
+      if(!pd.data.length){hp.innerHTML='<div class="hpop-name">'+p.name+'</div><div class="hpop-load">No upcoming arrivals</div>';return;}
       const rows=pd.data.slice(0,5).map(pr=>{
         const a=pr.attributes;
         const t=a.arrival_time||a.departure_time;
         const rid=pr.relationships?.route?.data?.id||'';
         const vid=pr.relationships?.vehicle?.data?.id;
         const vdata=vid?vm[vid]:null;
-        const m2=META[rid];
-        const col=m2?m2.c:'#888';
-        const ts=t?(()=>{const d=Math.round((new Date(t)-Date.now())/60000);return d<=0?'Now':d+'m';})():(a.status||'—');
+        const mc=META[rid]?.c||'#888';
+        const ts=t?(()=>{const df=Math.round((new Date(t)-Date.now())/60000);return df<=0?'Now':df+'m';})():(a.status||'—');
         const dir=a.direction_id===0?'→ Out':'← In';
-        // Occupancy from vehicle assigned to this trip
         let occHtml='';
         if(vdata){
           const occ=vdata.attributes.occupancy_status;
-          if(occ&&occ!=='NO_DATA_AVAILABLE'){
-            const occMap={'MANY_SEATS_AVAILABLE':['many','🟢 Plenty'],'FEW_SEATS_AVAILABLE':['few','🟡 Few seats'],'STANDING_ROOM_ONLY':['stand','🔴 Standing'],'CRUSHED_STANDING_ROOM_ONLY':['stand','🔴 Packed'],'FULL':['stand','🔴 Full']};
-            const [cls,lbl]=occMap[occ]||['none',occ];
-            occHtml='<span class="hp-occ hp-occ-'+cls+'">'+lbl+'</span>';
-          }
+          const occMap={'MANY_SEATS_AVAILABLE':['occ-many','🟢 Plenty'],'FEW_SEATS_AVAILABLE':['occ-few','🟡 Few seats'],'STANDING_ROOM_ONLY':['occ-full','🔴 Standing'],'CRUSHED_STANDING_ROOM_ONLY':['occ-full','🔴 Packed'],'FULL':['occ-full','🔴 Full']};
+          if(occ&&occMap[occ]){const[cls,lbl]=occMap[occ];occHtml='<span class="hpop-occ '+cls+'">'+lbl+'</span>';}
         }
-        return '<div class="hp-row"><span style="color:'+col+';font-weight:700;font-size:10px">'+rid+'</span><span class="hp-dir">'+dir+'</span><span class="hp-time">'+ts+'</span>'+occHtml+'</div>';
+        return '<div class="hpop-row"><span class="hpop-rid" style="color:'+mc+'">'+rid+'</span><span class="hpop-dir">'+dir+'</span><span class="hpop-time">'+ts+'</span>'+occHtml+'</div>';
       }).join('');
-      hp.innerHTML='<div class="hp-name">'+p.name+'</div>'+(p.wc==1?'<div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">♿ Accessible</div>':'')+rows;
-    }catch(e2){if(hp.style.display!=='none')hp.innerHTML='<div class="hp-name">'+p.name+'</div><div class="hp-loading">Could not load</div>';}
+      hp.innerHTML='<div class="hpop-name">'+p.name+'</div>'+(p.wc==1?'<div class="hpop-sub">♿ Accessible</div>':'')+rows;
+    }catch(err){if(hp.style.display!=='none')hp.innerHTML='<div class="hpop-name">'+p.name+'</div><div class="hpop-load">Could not load</div>';}
   });
-  map.on('mousemove','stops-ring',posHoverPopup);
-  map.on('mouseleave','stops-ring',()=>{ map.getCanvas().style.cursor=''; document.getElementById('hover-popup').style.display='none'; });
+  mbl.on('mousemove','stops-ring',moveHpop);
+  mbl.on('mouseleave','stops-ring',()=>{mbl.getCanvas().style.cursor='';document.getElementById('hpop').style.display='none';});
+
+  // CLICK — full predictions popup
+  mbl.on('click','stops-ring',async e=>{
+    const f=e.features[0];if(!f)return;
+    const p=f.properties;
+    const salerts=allAlerts.filter(a=>(a.attributes.informed_entity||[]).some(ie=>ie.stop===f.id));
+    const ahtml=salerts.length?'<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:4px;padding:5px 7px;font-size:10px;color:#856404;margin-bottom:6px">⚠ '+salerts[0].attributes.header.substring(0,80)+'</div>':'';
+    const pop=new maplibregl.Popup({maxWidth:'260px'}).setLngLat(e.lngLat).setHTML(
+      '<div><div class="pname">'+p.name+'</div>'+(p.wc==1?'<div style="font-size:10px;color:#2563eb;margin-bottom:4px">♿ Accessible · '+p.muni+'</div>':'')+ahtml+'<div id="pr-'+f.id+'" class="pload">Fetching arrivals…</div></div>'
+    ).addTo(mbl);
+    try{
+      const pd=await fetch(API+'/predictions?filter[stop]='+f.id+'&fields[prediction]=arrival_time,departure_time,direction_id,status&include=route&page[limit]=8&sort=arrival_time').then(r=>r.json());
+      const rm={};(pd.included||[]).filter(x=>x.type==='route').forEach(r=>{rm[r.id]=r;});
+      const el=document.getElementById('pr-'+f.id);if(!el)return;
+      if(!pd.data.length){el.textContent='No upcoming arrivals';return;}
+      el.innerHTML=pd.data.slice(0,6).map(pr=>{
+        const a=pr.attributes;const t=a.arrival_time||a.departure_time;
+        const rid=pr.relationships?.route?.data?.id||'';const mc=META[rid]?.c||'#888';
+        const ts=t?(()=>{const df=Math.round((new Date(t)-Date.now())/60000);return df<=0?'Now':df+'m';})():(a.status||'—');
+        return '<div class="prow"><span style="color:'+mc+';font-weight:700;font-size:10px">'+rid+'</span><span style="color:#666;font-size:10px">'+(a.direction_id===0?'→ Out':'← In')+'</span><span class="ptime">'+ts+'</span></div>';
+      }).join('');
+    }catch(err){const el=document.getElementById('pr-'+f.id);if(el)el.textContent='Could not load';}
+  });
 }
 
+function moveHpop(e){
+  const hp=document.getElementById('hpop');
+  const rect=document.getElementById('map-wrap').getBoundingClientRect();
+  let x=e.originalEvent.clientX-rect.left+14;
+  let y=e.originalEvent.clientY-rect.top-10;
+  if(x+260>rect.width)x=e.originalEvent.clientX-rect.left-270;
+  hp.style.left=x+'px';hp.style.top=y+'px';
+}
+
+// ── ALERTS ──────────────────────────────────────────────────────────────────
 async function doAlerts(){
   try{
-    const d=await fetch(`${API}/alerts?filter[route_type]=0,1,2,3&fields[alert]=id,header,effect,severity,informed_entity`).then(r=>r.json());
+    const d=await fetch(API+'/alerts?filter[route_type]=0,1,2,3&fields[alert]=id,header,effect,severity,informed_entity').then(r=>r.json());
     allAlerts=d.data;
     const cnt=allAlerts.length;
     document.getElementById('ftalert').textContent=cnt;
@@ -322,148 +396,147 @@ async function doAlerts(){
     if(cnt){b.textContent=cnt;b.style.display='inline';}else b.style.display='none';
     stalerts={};
     allAlerts.forEach(a=>{(a.attributes.informed_entity||[]).forEach(ie=>{if(ie.stop)stalerts[ie.stop]=Math.max(stalerts[ie.stop]||0,a.attributes.severity||1);});});
-    if(map.getSource('stops')){
-      Object.entries(stalerts).forEach(([sid,sev])=>{map.setFeatureState({source:'stops',id:sid},{alert:sev>=5,warn:sev>0&&sev<5});});
+    if(mbl.getSource('stops')){
+      Object.entries(stalerts).forEach(([sid,sev])=>mbl.setFeatureState({source:'stops',id:sid},{alert:sev>=5,warn:sev>0&&sev<5}));
     }
     renderAlerts();renderStatus();
-  }catch(e){console.warn('alerts err',e);}
+  }catch(e){console.warn('alerts',e);}
 }
 
 function renderAlerts(){
   const el=document.getElementById('alert-list');
-  if(!allAlerts.length){el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">✅ No active alerts</div>';return;}
+  if(!allAlerts.length){el.innerHTML='<div style="color:var(--muted);font-size:11px;padding:16px;text-align:center">✅ No active alerts</div>';return;}
   const s=[...allAlerts].sort((a,b)=>(b.attributes.severity||0)-(a.attributes.severity||0));
   el.innerHTML=s.map(a=>{
     const at=a.attributes;const sev=at.severity||0;
-    const routes=[...new Set((at.informed_entity||[]).map(ie=>ie.route).filter(Boolean))].slice(0,3).join(', ');
-    return '<div class="alert-item'+(sev>=7?' hi':'')+'">'+
-      (routes?'<div class="aroute">'+routes+'</div>':'')+
+    const cls=sev>=7?'hi':sev<2?'lo':'';
+    const rts=[...new Set((at.informed_entity||[]).map(ie=>ie.route).filter(Boolean))].slice(0,4).join(' · ');
+    return '<div class="aitem '+cls+'">'+(rts?'<div class="aroute">'+rts+'</div>':'')+
       '<div class="ahead">'+(at.header||'')+'</div>'+
       '<div class="aeff">'+((at.effect||'').replace(/_/g,' '))+'</div></div>';
   }).join('');
 }
 
-const LINES=[
-  {id:'Red',routes:['Red'],label:'RL',name:'Red Line',color:'#DA291C'},
-  {id:'Orange',routes:['Orange'],label:'OL',name:'Orange Line',color:'#ED8B00'},
-  {id:'Green',routes:['Green-B','Green-C','Green-D','Green-E'],label:'GL',name:'Green Line',color:'#00843D'},
-  {id:'Blue',routes:['Blue'],label:'BL',name:'Blue Line',color:'#003DA5'},
-  {id:'Mattapan',routes:['Mattapan'],label:'MT',name:'Mattapan',color:'#DA291C'},
-  {id:'SL',routes:SL,label:'SL',name:'Silver Line',color:'#7C878E'},
-  {id:'CR',routes:CR,label:'CR',name:'Commuter Rail (12 lines)',color:'#80276C'},
+const LINE_GROUPS=[
+  {routes:['Red'],l:'RL',n:'Red Line',c:'#DA291C'},
+  {routes:['Orange'],l:'OL',n:'Orange Line',c:'#ED8B00'},
+  {routes:['Green-B','Green-C','Green-D','Green-E'],l:'GL',n:'Green Line',c:'#00843D'},
+  {routes:['Blue'],l:'BL',n:'Blue Line',c:'#003DA5'},
+  {routes:['Mattapan'],l:'MT',n:'Mattapan',c:'#DA291C'},
+  {routes:SL,l:'SL',n:'Silver Line',c:'#7C878E'},
+  {routes:CR,l:'CR',n:'Commuter Rail',c:'#80276C'},
 ];
 function renderStatus(){
   const el=document.getElementById('line-list');
-  el.innerHTML=LINES.map(g=>{
+  el.innerHTML=LINE_GROUPS.map(g=>{
     const cnt=allAlerts.filter(a=>(a.attributes.informed_entity||[]).some(ie=>g.routes.includes(ie.route))).length;
     const sev=allAlerts.filter(a=>(a.attributes.informed_entity||[]).some(ie=>g.routes.includes(ie.route))).reduce((m,a)=>Math.max(m,a.attributes.severity||0),0);
-    const cls=cnt===0?'ok':sev>=7?'bad':'warn';
+    const cls=cnt===0?'s-ok':sev>=7?'s-bad':'s-warn';
     const lbl=cnt===0?'Normal':sev>=7?'Disruption':'Advisory';
-    return '<div class="line-row" onclick="fvByLine('+JSON.stringify(g.routes)+')">'+
-      '<div class="line-pill" style="background:'+g.color+'">'+g.label+'</div>'+
-      '<div class="line-name">'+g.name+'</div>'+
+    return '<div class="lrow" onclick="fvByLine('+JSON.stringify(g.routes)+')">'+
+      '<div class="lpill" style="background:'+g.c+'">'+g.l+'</div>'+
+      '<div class="lname">'+g.n+'</div>'+
       '<div class="lstat '+cls+'">'+lbl+'</div>'+
       (cnt?'<div class="abadge">'+cnt+'</div>':'')+'</div>';
   }).join('');
 }
 
+// ── VEHICLES ────────────────────────────────────────────────────────────────
+function occEmoji(o){
+  if(!o||o==='NO_DATA_AVAILABLE')return'';
+  if(o.includes('MANY'))return'🟢';
+  if(o.includes('FEW'))return'🟡';
+  return'🔴';
+}
+
+function updateTrail(id,lng,lat,color){
+  if(!vposHist[id])vposHist[id]=[];
+  const pos=[lng,lat];
+  const last=vposHist[id][vposHist[id].length-1];
+  if(last&&last[0]===lng&&last[1]===lat)return; // no movement
+  vposHist[id].push(pos);
+  if(vposHist[id].length>4)vposHist[id].shift();
+  clearTrail(id);
+  vtrails[id]=vposHist[id].slice(0,-1).map((p,i,arr)=>{
+    const opacity=((i+1)/arr.length)*0.45;
+    const sz=7+i*2;
+    const el=document.createElement('div');
+    el.style.cssText='width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+color+';opacity:'+opacity+';pointer-events:none;border:1px solid rgba(255,255,255,0.3);display:block;';
+    return new maplibregl.Marker({element:el,anchor:'center'}).setLngLat(p).addTo(mbl);
+  });
+}
+function clearTrail(id){(vtrails[id]||[]).forEach(m=>m.remove());vtrails[id]=[];}
+
 async function doVeh(){
   try{
-    const rts=[...SUBWAY,...SL,...CR].join(',');
-    const d=await fetch(`${API}/vehicles?filter[route]=${rts}&fields[vehicle]=label,latitude,longitude,bearing,current_status,speed,occupancy_status,direction_id&include=route`).then(r=>r.json());
+    const rts=ALL_ROUTES.join(',');
+    const d=await fetch(API+'/vehicles?filter[route]='+rts+'&fields[vehicle]=label,latitude,longitude,bearing,current_status,speed,occupancy_status,direction_id&include=route').then(r=>r.json());
     allVeh=d.data;
     const rm={};(d.included||[]).filter(x=>x.type==='route').forEach(r=>{rm[r.id]=r;});
     document.getElementById('ftveh').textContent=allVeh.length;
     document.getElementById('ftvt').textContent=new Date().toLocaleTimeString('en-US',{hour12:false});
-    updVeh(allVeh,rm);renderVeh(allVeh);
-  }catch(e){console.warn('veh err',e);}
+    updVeh(allVeh,rm);
+    renderVeh(allVeh);
+  }catch(e){console.warn('veh',e);}
 }
 
-function occEmoji(o){
-  if(!o||o==='NO_DATA_AVAILABLE')return'';
-  if(o.includes('FEW')||o.includes('STANDING'))return'🟡';
-  if(o.includes('CRUSHED')||o.includes('FULL'))return'🔴';
-  return'🟢';
-}
-
-function updateTrail(id, lng, lat, color){
-  if(!vposHistory[id]) vposHistory[id]=[];
-  vposHistory[id].push([lng,lat]);
-  if(vposHistory[id].length>4) vposHistory[id].shift();
-  // Remove old trail markers
-  clearTrail(id);
-  // Draw ghost dots for positions 0..N-2 (not current)
-  const hist = vposHistory[id];
-  vtrails[id]=[];
-  for(let i=0;i<hist.length-1;i++){
-    const opacity = (i+1)/(hist.length)*0.5; // fade older ones more
-    const size = 8 + i*2;
-    const el=document.createElement('div');
-    el.style.cssText='width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';opacity:'+opacity+';pointer-events:none;border:1px solid rgba(255,255,255,0.4);';
-    const tm=new maplibregl.Marker({element:el,anchor:'center'}).setLngLat(hist[i]).addTo(map);
-    vtrails[id].push(tm);
-  }
-}
-function clearTrail(id){
-  (vtrails[id]||[]).forEach(m=>m.remove());
-  vtrails[id]=[];
-}
 function updVeh(veh){
   const seen=new Set();
   veh.forEach(v=>{
     const a=v.attributes;if(!a.latitude||!a.longitude)return;
     const rid=v.relationships?.route?.data?.id||'';
-    const m=META[rid]||{c:'#888',l:'?',n:rid};
+    const m=META[rid]||{c:'#888',l:'?',n:rid,t:'subway'};
     seen.add(v.id);
     if(vmarkers[v.id]){
       vmarkers[v.id].setLngLat([a.longitude,a.latitude]);
-      // Update rotation via MapLibre marker API (respects map orientation)
-      if(typeof vmarkers[v.id].setRotation==='function') vmarkers[v.id].setRotation(a.bearing||0);
-      updateTrail(v.id, a.longitude, a.latitude, m.c);
+      if(typeof vmarkers[v.id].setRotation==='function')vmarkers[v.id].setRotation(a.bearing||0);
+      updateTrail(v.id,a.longitude,a.latitude,m.c);
       return;
     }
-    // Arrow SVG: teardrop/chevron pointing up, rotated by bearing via MapLibre (not CSS)
+    // Arrow SVG marker
     const el=document.createElement('div');
-    el.style.cssText='cursor:pointer;display:'+(vehOn?'block':'none')+';filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));';
-    el.innerHTML='<svg width="18" height="22" viewBox="0 0 18 22" xmlns="http://www.w3.org/2000/svg"><polygon points="9,0 18,18 9,13 0,18" fill="'+m.c+'" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>';
-    const mk=new maplibregl.Marker({element:el, rotation:(a.bearing||0), rotationAlignment:'map', pitchAlignment:'map'}).setLngLat([a.longitude,a.latitude]).addTo(map);
+    el.style.cssText='cursor:pointer;display:'+(vehOn?'block':'none')+';filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));';
+    el.innerHTML='<svg width="16" height="20" viewBox="0 0 16 20" xmlns="http://www.w3.org/2000/svg"><polygon points="8,0 16,16 8,11 0,16" fill="'+m.c+'" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+    const mk=new maplibregl.Marker({element:el,rotation:a.bearing||0,rotationAlignment:'map',pitchAlignment:'map'})
+      .setLngLat([a.longitude,a.latitude]).addTo(mbl);
+    // Click popup
     el.addEventListener('click',()=>{
       const status=(a.current_status||'').replace(/_/g,' ');
       const spd=a.speed?Math.round(a.speed*2.237)+'mph':'n/a';
+      const occ=occEmoji(a.occupancy_status);
       new maplibregl.Popup({offset:14,maxWidth:'200px'}).setLngLat([a.longitude,a.latitude]).setHTML(
         '<div><div class="ptag" style="background:'+m.c+'">'+m.n+'</div>'+
-        '<div style="font-size:12px;font-weight:700;margin-bottom:6px;">Car '+( a.label||v.id)+'</div>'+
-        '<div class="prow"><span style="color:#555;font-size:11px">Status</span><span>'+status+'</span></div>'+
-        '<div class="prow"><span style="color:#555;font-size:11px">Speed</span><span class="ptime">'+spd+'</span></div>'+
-        '<div class="prow"><span style="color:#555;font-size:11px">Occupancy</span><span>'+(occEmoji(a.occupancy_status)||'—')+'</span></div>'+
-        '<div class="prow"><span style="color:#555;font-size:11px">Direction</span><span>'+(a.direction_id===0?'Outbound':'Inbound')+'</span></div></div>'
-      ).addTo(map);
+        '<div style="font-size:12px;font-weight:700;margin-bottom:6px">Car '+(a.label||v.id)+' '+occ+'</div>'+
+        '<div class="prow"><span style="color:#666;font-size:10px">Status</span><span>'+status+'</span></div>'+
+        '<div class="prow"><span style="color:#666;font-size:10px">Speed</span><span class="ptime">'+spd+'</span></div>'+
+        '<div class="prow"><span style="color:#666;font-size:10px">Direction</span><span>'+(a.direction_id===0?'Outbound':'Inbound')+'</span></div></div>'
+      ).addTo(mbl);
     });
     vmarkers[v.id]=mk;
-    updateTrail(v.id, a.longitude, a.latitude, m.c);
+    updateTrail(v.id,a.longitude,a.latitude,m.c);
   });
-  Object.keys(vmarkers).forEach(id=>{if(!seen.has(id)){vmarkers[id].remove();delete vmarkers[id];clearTrail(id);}});
+  Object.keys(vmarkers).forEach(id=>{if(!seen.has(id)){vmarkers[id].remove();clearTrail(id);delete vmarkers[id];delete vposHist[id];}});
 }
 
 function renderVeh(veh){
   const el=document.getElementById('veh-list');
-  if(!veh.length){el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:20px;text-align:center">No active vehicles</div>';return;}
-  const s=[...veh].sort((a,b)=>{const ra=a.relationships?.route?.data?.id||'';const rb=b.relationships?.route?.data?.id||'';return ra.localeCompare(rb);});
+  if(!veh.length){el.innerHTML='<div style="color:var(--muted);font-size:11px;padding:16px;text-align:center">No active vehicles</div>';return;}
+  const s=[...veh].sort((a,b)=>(a.relationships?.route?.data?.id||'').localeCompare(b.relationships?.route?.data?.id||''));
   el.innerHTML=s.map(v=>{
     const a=v.attributes;const rid=v.relationships?.route?.data?.id||'';
     const m=META[rid]||{c:'#888',l:'?',n:rid};
     const st=(a.current_status||'').replace(/_/g,' ').toLowerCase();
-    return '<div class="vitem" onclick="map.flyTo({center:['+a.longitude+','+a.latitude+'],zoom:15,duration:800})">'+
+    const occ=occEmoji(a.occupancy_status);
+    return '<div class="vitem" onclick="mbl.flyTo({center:['+a.longitude+','+a.latitude+'],zoom:15,duration:700})">'+
       '<div class="vico" style="background:'+m.c+'22;color:'+m.c+'">'+m.l+'</div>'+
-      '<div><div class="vlbl">'+( a.label||v.id)+' '+(occEmoji(a.occupancy_status)||'')+'</div>'+
+      '<div><div class="vlbl">'+( a.label||v.id)+' '+occ+'</div>'+
       '<div class="vst">'+st+' · '+(a.direction_id===0?'Outbound':'Inbound')+'</div></div></div>';
   }).join('');
 }
 
 function fvByLine(routes){
   sPTab('vehicles');
-  const f=allVeh.filter(v=>routes.includes(v.relationships?.route?.data?.id));
-  renderVeh(f);
+  renderVeh(allVeh.filter(v=>routes.includes(v.relationships?.route?.data?.id)));
 }
 </script>
 </body>
