@@ -413,20 +413,31 @@ function updVeh(veh){
     seen.add(v.id);
     if(vmarkers[v.id]){
       vmarkers[v.id].setLngLat([a.longitude,a.latitude]);
-      if(typeof vmarkers[v.id].setRotation==='function')vmarkers[v.id].setRotation(a.bearing||0);
+      if(typeof vmarkers[v.id].setRotation==='function'&&a.bearing!==null&&a.bearing!==undefined)vmarkers[v.id].setRotation(a.bearing);
       return;
     }
-    // Create SVG arrow element
+    // Create SVG — arrow if bearing known, circle if null (stopped/unknown)
     const ns='http://www.w3.org/2000/svg';
     const svg=document.createElementNS(ns,'svg');
-    svg.setAttribute('width','16');svg.setAttribute('height','20');svg.setAttribute('viewBox','0 0 16 20');
-    svg.style.cssText='filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));display:block;';
-    const poly=document.createElementNS(ns,'polygon');
-    poly.setAttribute('points','8,0 16,16 8,11 0,16');
-    poly.setAttribute('fill',m.c);poly.setAttribute('stroke','white');
-    poly.setAttribute('stroke-width','1.5');poly.setAttribute('stroke-linejoin','round');
-    svg.appendChild(poly);
-    const mk=new maplibregl.Marker({element:svg,rotation:a.bearing||0,rotationAlignment:'map',pitchAlignment:'map'})
+    const hasBearing = a.bearing !== null && a.bearing !== undefined;
+    if(hasBearing){
+      svg.setAttribute('width','16');svg.setAttribute('height','20');svg.setAttribute('viewBox','0 0 16 20');
+      svg.style.cssText='filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));display:block;';
+      const poly=document.createElementNS(ns,'polygon');
+      poly.setAttribute('points','8,0 16,16 8,11 0,16');
+      poly.setAttribute('fill',m.c);poly.setAttribute('stroke','white');
+      poly.setAttribute('stroke-width','1.5');poly.setAttribute('stroke-linejoin','round');
+      svg.appendChild(poly);
+    } else {
+      // Circle dot for stopped/no-bearing trains
+      svg.setAttribute('width','14');svg.setAttribute('height','14');svg.setAttribute('viewBox','0 0 14 14');
+      svg.style.cssText='filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));display:block;';
+      const circle=document.createElementNS(ns,'circle');
+      circle.setAttribute('cx','7');circle.setAttribute('cy','7');circle.setAttribute('r','5');
+      circle.setAttribute('fill',m.c);circle.setAttribute('stroke','white');circle.setAttribute('stroke-width','2');
+      svg.appendChild(circle);
+    }
+    const mk=new maplibregl.Marker({element:svg,rotation:hasBearing?(a.bearing||0):0,rotationAlignment:'map',pitchAlignment:'map'})
       .setLngLat([a.longitude,a.latitude]).addTo(mbl);
     // Attach click to the wrapper MapLibre creates
     const wrapper=mk.getElement();
