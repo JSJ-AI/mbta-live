@@ -88,12 +88,12 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);heigh
 .ftr b{color:var(--text);}
 
 /* POPUP */
-.maplibregl-popup-content{padding:11px;border-radius:8px;max-width:230px;font-family:'Inter',sans-serif;}
-.pname{font-weight:700;font-size:13px;margin-bottom:4px;}
+.maplibregl-popup-content{padding:11px;border-radius:8px;max-width:230px;font-family:'Inter',sans-serif;color:#111827;}
+.pname{font-weight:700;font-size:13px;margin-bottom:4px;color:#111827;}
 .ptag{display:inline-block;padding:2px 6px;border-radius:8px;font-size:9px;font-weight:800;color:#fff;margin-bottom:5px;}
-.prow{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #eee;font-size:11px;}
+.prow{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #e5e7eb;font-size:11px;color:#111827;}
 .prow:last-child{border-bottom:none;}
-.ptime{font-weight:700;font-family:'JetBrains Mono',monospace;}
+.ptime{font-weight:700;font-family:'JetBrains Mono',monospace;color:#1e3a5f;}
 .pload{color:#888;font-size:11px;font-style:italic;}
 
 ::-webkit-scrollbar{width:3px;}
@@ -194,7 +194,7 @@ function toggleLayer(l){
 function toggleVeh(){
   vehOn=!vehOn;
   document.getElementById('btn-veh').classList.toggle('on',vehOn);
-  Object.values(vmarkers).forEach(mk=>mk.getElement().style.display=vehOn?'block':'none');
+  Object.values(vmarkers).forEach(m=>m.getElement().style.display=vehOn?'block':'none');
 }
 function toggleWC(){
   wcOn=!wcOn;
@@ -237,11 +237,11 @@ mbl.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right')
 
 mbl.on('load',async()=>{
   mbl.setGlyphs('https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf');
-  // Load shapes in parallel (errors are caught inside loadShape)
-  // Load stations independently so shape errors can't crash it
-  await Promise.allSettled(ALL_ROUTES.map(rid=>loadShape(rid)));
+  // Load all shapes in parallel
+  await Promise.all(ALL_ROUTES.map(rid=>loadShape(rid)));
   await loadStations();
-  await Promise.all([doAlerts(), doVeh()]);
+  await doAlerts();
+  await doVeh();
   setInterval(doVeh,15000);
   setInterval(doAlerts,30000);
 });
@@ -374,7 +374,7 @@ async function loadStations(){
         const a=pr.attributes;const t=a.arrival_time||a.departure_time;
         const rid=pr.relationships?.route?.data?.id||'';const mc=META[rid]?.c||'#888';
         const ts=t?(()=>{const df=Math.round((new Date(t)-Date.now())/60000);return df<=0?'Now':df+'m';})():(a.status||'—');
-        return '<div class="prow"><span style="color:'+mc+';font-weight:700;font-size:10px">'+rid+'</span><span style="color:#666;font-size:10px">'+(a.direction_id===0?'→ Out':'← In')+'</span><span class="ptime">'+ts+'</span></div>';
+        return '<div class="prow"><span style="color:'+mc+';font-weight:700;font-size:10px">'+rid+'</span><span style="color:#1e3a5f;font-size:10px;font-weight:600">'+(a.direction_id===0?'→ Out':'← In')+'</span><span class="ptime">'+ts+'</span></div>';
       }).join('');
     }catch(err){const el=document.getElementById('pr-'+f.id);if(el)el.textContent='Could not load';}
   });
@@ -480,37 +480,23 @@ function updVeh(veh){
       if(typeof vmarkers[v.id].setRotation==='function')vmarkers[v.id].setRotation(a.bearing||0);
       return;
     }
-    // Arrow SVG marker — create SVG element directly
-    const ns='http://www.w3.org/2000/svg';
-    const svgEl=document.createElementNS(ns,'svg');
-    svgEl.setAttribute('width','16');svgEl.setAttribute('height','20');svgEl.setAttribute('viewBox','0 0 16 20');
-    svgEl.style.cssText='filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));display:block;';
-    const poly=document.createElementNS(ns,'polygon');
-    poly.setAttribute('points','8,0 16,16 8,11 0,16');
-    poly.setAttribute('fill',m.c);poly.setAttribute('stroke','white');
-    poly.setAttribute('stroke-width','1.5');poly.setAttribute('stroke-linejoin','round');
-    svgEl.appendChild(poly);
-    const mk=new maplibregl.Marker({element:svgEl,rotation:a.bearing||0,rotationAlignment:'map',pitchAlignment:'map'})
+    // Arrow SVG marker
+    const el=document.createElement('div');
+    el.style.cssText='cursor:pointer;display:'+(vehOn?'block':'none')+';filter:drop-shadow(0 1px 3px rgba(0,0,0,.7));';
+    el.innerHTML='<svg width="16" height="20" viewBox="0 0 16 20" xmlns="http://www.w3.org/2000/svg"><polygon points="8,0 16,16 8,11 0,16" fill="'+m.c+'" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+    const mk=new maplibregl.Marker({element:el,rotation:a.bearing||0,rotationAlignment:'map',pitchAlignment:'map'})
       .setLngLat([a.longitude,a.latitude]).addTo(mbl);
-    // Attach click to the wrapper element AFTER addTo
-    const wrapper=mk.getElement();
-    wrapper.style.cursor='pointer';
-    if(!vehOn)wrapper.style.display='none';
-    // Store vehicle data on wrapper for click handler
-    const vdata={a,m,vid:v.id};
-    wrapper.addEventListener('click',(evt)=>{
-      evt.stopPropagation();
-      const status=vdata.a.current_status?.replace(/_/g,' ')||'';
-      const spd=vdata.a.speed?Math.round(vdata.a.speed*2.237)+'mph':'n/a';
-      const occ=occEmoji(vdata.a.occupancy_status);
-      const occLabel={'MANY_SEATS_AVAILABLE':'🟢 Plenty of seats','FEW_SEATS_AVAILABLE':'🟡 Few seats left','STANDING_ROOM_ONLY':'🔴 Standing room only','CRUSHED_STANDING_ROOM_ONLY':'🔴 Packed','FULL':'🔴 Full'}[vdata.a.occupancy_status]||'No data';
-      new maplibregl.Popup({offset:14,maxWidth:'210px',closeButton:true}).setLngLat(mk.getLngLat()).setHTML(
-        '<div><div class="ptag" style="background:'+vdata.m.c+'">'+vdata.m.n+'</div>'+
-        '<div style="font-size:12px;font-weight:700;margin-bottom:7px">Car '+( vdata.a.label||vdata.vid)+'</div>'+
-        '<div class="prow"><span style="color:#666;font-size:10px">Occupancy</span><span style="font-weight:600">'+occLabel+'</span></div>'+
-        '<div class="prow"><span style="color:#666;font-size:10px">Status</span><span>'+status+'</span></div>'+
-        '<div class="prow"><span style="color:#666;font-size:10px">Speed</span><span class="ptime">'+spd+'</span></div>'+
-        '<div class="prow"><span style="color:#666;font-size:10px">Direction</span><span>'+(vdata.a.direction_id===0?'→ Outbound':'← Inbound')+'</span></div></div>'
+    // Click popup
+    el.addEventListener('click',()=>{
+      const status=(a.current_status||'').replace(/_/g,' ');
+      const spd=a.speed?Math.round(a.speed*2.237)+'mph':'n/a';
+      const occ=occEmoji(a.occupancy_status);
+      new maplibregl.Popup({offset:14,maxWidth:'200px'}).setLngLat([a.longitude,a.latitude]).setHTML(
+        '<div><div class="ptag" style="background:'+m.c+'">'+m.n+'</div>'+
+        '<div style="font-size:12px;font-weight:700;margin-bottom:6px">Car '+(a.label||v.id)+' '+occ+'</div>'+
+        '<div class="prow"><span style="color:#1e3a5f;font-size:10px;font-weight:600">Status</span><span>'+status+'</span></div>'+
+        '<div class="prow"><span style="color:#1e3a5f;font-size:10px;font-weight:600">Speed</span><span class="ptime">'+spd+'</span></div>'+
+        '<div class="prow"><span style="color:#1e3a5f;font-size:10px;font-weight:600">Direction</span><span>'+(a.direction_id===0?'Outbound':'Inbound')+'</span></div></div>'
       ).addTo(mbl);
     });
     vmarkers[v.id]=mk;
