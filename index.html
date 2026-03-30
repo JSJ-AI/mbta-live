@@ -132,6 +132,19 @@ CR.forEach(r=>META[r]={c:'#80276C',l:'CR',n:r.replace('CR-',''),t:'cr'});
 SL.forEach(r=>META[r]={c:'#7C878E',l:'SL',n:'Silver Line',t:'sl'});
 
 let mbl,vmarkers={},stalerts={},vehOn=true,wcOn=true,lon={subway:true,cr:true,sl:true};
+let DIRS={}; // routeId -> ['Dest A','Dest B']
+async function loadDirs(){
+  try{
+    const ids=[...Object.keys(META)].join(',');
+    const d=await fetch(API+'/routes?filter[id]='+ids+'&fields[route]=direction_destinations').then(r=>r.json());
+    (d.data||[]).forEach(r=>{DIRS[r.id]=r.attributes.direction_destinations||[];});
+  }catch(e){console.warn('dirs',e);}
+}
+function dirLabel(rid,dirId){
+  const dests=DIRS[rid];
+  if(dests&&dests[dirId])return 'to '+dests[dirId];
+  return dirId===0?'Outbound':'Inbound';
+}
 let allAlerts=[],allVeh=[];
 
 setInterval(()=>document.getElementById('clk').textContent=new Date().toLocaleTimeString('en-US',{hour12:false}),1000);
@@ -192,6 +205,7 @@ mbl.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right')
 
 mbl.on('load',async()=>{
   mbl.setGlyphs('https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf');
+  await loadDirs();
   // CRITICAL: load stations FIRST so event listeners register before shape fetches
   await loadStations();
   // Then load shapes in parallel (errors caught individually)
@@ -273,7 +287,7 @@ async function loadStations(){
           const vd=vid?vm[vid]:null;
           const mc=META[rid]?.c||'#888';
           const ts=t?(()=>{const df=Math.round((new Date(t)-Date.now())/60000);return df<=0?'Now':df+'m';})():(a.status||'—');
-          const dir=a.direction_id===0?'Out':'In';
+          const dir=DIRS[rid]?'to '+(DIRS[rid][a.direction_id]||'?'):(a.direction_id===0?'Out':'In');
           let occHtml='';
           if(vd){const occ=vd.attributes.occupancy_status;
             const om={'MANY_SEATS_AVAILABLE':['occ-many','Plenty'],'FEW_SEATS_AVAILABLE':['occ-few','Few seats'],'STANDING_ROOM_ONLY':['occ-full','Standing'],'CRUSHED_STANDING_ROOM_ONLY':['occ-full','Packed'],'FULL':['occ-full','Full']};
@@ -424,7 +438,7 @@ function updVeh(veh){
       evt.stopPropagation();
       const status=(snap.a.current_status||'').replace(/_/g,' ')||'—';
       const spd=snap.a.speed?Math.round(snap.a.speed*2.237)+'mph':'—';
-      const dir=snap.a.direction_id===0?'Outbound':'Inbound';
+      const dir=dirLabel(snap.m?Object.keys(META).find(k=>META[k]===snap.m)||snap.vid:'',snap.a.direction_id);
       const occLbl=OCC_LABEL[snap.a.occupancy_status]||'';
       const occIco=OCC_ICON[snap.a.occupancy_status]||'';
       const occRow=occLbl?'<div class="ppop-row"><span class="ppop-lbl">Occupancy</span><span class="ppop-val">'+occIco+' '+occLbl+'</span></div>':'';
@@ -456,7 +470,7 @@ function renderVeh(veh){
     return '<div class="vitem" onclick="mbl.flyTo({center:['+a.longitude+','+a.latitude+'],zoom:15,duration:700})">'+
       '<div class="vico" style="background:'+m.c+'22;color:'+m.c+'">'+m.l+'</div>'+
       '<div><div class="vlbl">'+(a.label||v.id)+' '+occ+'</div>'+
-      '<div class="vst">'+st+' · '+(a.direction_id===0?'Outbound':'Inbound')+'</div></div></div>';
+      '<div class="vst">'+st+' · '+dirLabel(rid,a.direction_id)+'</div></div></div>';
   }).join('');
 }
 
