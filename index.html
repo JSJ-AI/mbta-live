@@ -217,21 +217,24 @@ function decPoly(enc){
   }return c;
 }
 
-// ── MAP ──────────────────────────────────────────────────────────────────────
-mbl=new maplibregl.Map({container:'map',style:'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',center:[-71.08,42.36],zoom:12,attributionControl:false});
-mbl.addControl(new maplibregl.NavigationControl(),'top-right');
-mbl.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
+// ── MAP — wrapped in window.load for mobile container sizing ─────────────────
+window.addEventListener('load',function(){
+  mbl=new maplibregl.Map({container:'map',style:'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',center:[-71.08,42.36],zoom:12,attributionControl:false});
+  mbl.addControl(new maplibregl.NavigationControl(),'top-right');
+  mbl.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
 
-mbl.on('load',async()=>{
-  await loadDirs();
-  // CRITICAL: load stations FIRST so event listeners register before shape fetches
-  await loadStations();
-  // Then load shapes in parallel (errors caught individually)
-  Promise.allSettled(ALL.map(rid=>loadShape(rid)));
-  // Load data
-  await Promise.all([doAlerts(),doVeh()]);
-  setInterval(doVeh,15000);
-  setInterval(doAlerts,30000);
+  mbl.on('load',async()=>{
+    setTimeout(function(){mbl.resize();},100); // ensure correct size on mobile
+    await loadDirs();
+    // CRITICAL: load stations FIRST so event listeners register before shape fetches
+    await loadStations();
+    // Then load shapes in parallel (errors caught individually)
+    Promise.allSettled(ALL.map(rid=>loadShape(rid)));
+    // Load data
+    await Promise.all([doAlerts(),doVeh()]);
+    setInterval(doVeh,15000);
+    setInterval(doAlerts,30000);
+  });
 });
 
 // ── SHAPES ───────────────────────────────────────────────────────────────────
