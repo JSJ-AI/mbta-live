@@ -218,12 +218,11 @@ function decPoly(enc){
 }
 
 // ── MAP ──────────────────────────────────────────────────────────────────────
-mbl=new maplibregl.Map({container:'map',style:'https://tiles.openfreemap.org/styles/liberty',center:[-71.08,42.36],zoom:12,attributionControl:false});
+mbl=new maplibregl.Map({container:'map',style:'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',center:[-71.08,42.36],zoom:12,attributionControl:false});
 mbl.addControl(new maplibregl.NavigationControl(),'top-right');
 mbl.addControl(new maplibregl.AttributionControl({compact:true}),'bottom-right');
 
 mbl.on('load',async()=>{
-  mbl.setGlyphs('https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf');
   await loadDirs();
   // CRITICAL: load stations FIRST so event listeners register before shape fetches
   await loadStations();
