@@ -228,8 +228,8 @@ window.addEventListener('load',function(){
     await loadDirs();
     // CRITICAL: load stations FIRST so event listeners register before shape fetches
     await loadStations();
-    // Then load shapes in parallel (errors caught individually)
-    Promise.allSettled(ALL.map(rid=>loadShape(rid)));
+    // Load shapes throttled — prevents MBTA API rate-limiting
+    loadShapesThrottled();
     // Load data
     await Promise.all([doAlerts(),doVeh()]);
     setInterval(doVeh,15000);
@@ -237,13 +237,30 @@ window.addEventListener('load',function(){
   });
 });
 
+
+// ── THROTTLED SHAPE LOADER ────────────────────────────────────────────────────
+// Fires 3 routes at a time with 400ms pauses so we stay under the MBTA API
+// unauthenticated rate-limit (20 req/min). Each route is retried once on failure.
+async function loadShapesThrottled(){
+  const BATCH=3,DELAY=400;
+  for(let i=0;i<ALL.length;i+=BATCH){
+    const batch=ALL.slice(i,i+BATCH);
+    await Promise.allSettled(batch.map(rid=>loadShape(rid)));
+    if(i+BATCH<ALL.length) await new Promise(r=>setTimeout(r,DELAY));
+  }
+}
+
 // ── SHAPES ───────────────────────────────────────────────────────────────────
 async function loadShape(rid){
   const m=META[rid];if(!m)return;
   try{
     const d=await fetch(API+'/shapes?filter[route]='+rid+'&fields[shape]=polyline').then(r=>r.json());
     if(!d.data||!d.data.length)return;
-    const feats=d.data.map(s=>({type:'Feature',geometry:{type:'LineString',coordinates:decPoly(s.attributes.polyline)},properties:{}}));
+    // Sort by polyline length desc — longer = more canonical route; keep top 2 to eliminate
+// overlapping short-turn/peak variants that cause the fragmented-line appearance
+const sorted=d.data.slice().sort((a,b)=>b.attributes.polyline.length-a.attributes.polyline.length);
+const keep=sorted.slice(0,2);
+const feats=keep.map(s=>({type:'Feature',geometry:{type:'LineString',coordinates:decPoly(s.attributes.polyline)},properties:{}}));
     const sid='sh-'+rid;
     mbl.addSource(sid,{type:'geojson',data:{type:'FeatureCollection',features:feats}});
     mbl.addLayer({id:m.t+'-'+rid+'-c',type:'line',source:sid,
